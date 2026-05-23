@@ -1,0 +1,1352 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover"/>
+<meta name="apple-mobile-web-app-capable" content="yes"/>
+<meta name="theme-color" content="#1B2C6A"/>
+<title>Magical Paris Map — A Disneyland Paris Inspired Guide</title>
+
+<!-- Leaflet -->
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+
+<!-- Google Fonts: Disney-inspired -->
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Mr+Dafoe&family=Quicksand:wght@400;500;600;700&family=Cinzel:wght@500;700&display=swap" rel="stylesheet">
+
+<style>
+  :root{
+    /* Disneyland Paris brand palette — twilight castle edition */
+    --dlp-royal:        #1B2C6A;   /* castle navy / royal blue */
+    --dlp-royal-deep:   #0E1A47;
+    --dlp-purple:       #6B3FA0;   /* Maleficent / twilight purple */
+    --dlp-purple-deep:  #3D1F66;   /* deep night purple */
+    --dlp-purple-soft:  #9B6FCB;   /* light lilac for accents */
+    --dlp-magenta:      #E6308A;   /* Minnie pink */
+    --dlp-pink:         #F8C8DC;   /* castle pink */
+    --dlp-gold:         #D4AF6F;   /* softer champagne gold (was bright yellow) */
+    --dlp-gold-deep:    #B08F4E;
+    --dlp-gold-light:   #E8CEA0;
+    --dlp-sky:          #BFE3F5;
+    --dlp-cream:        #FBF6EE;   /* warm parchment */
+    --dlp-white:        #FFFFFF;
+    --shadow-soft:      0 6px 24px rgba(61,31,102,.20);
+    --shadow-pop:       0 14px 44px rgba(61,31,102,.38);
+  }
+
+  *{box-sizing:border-box}
+  html,body{margin:0;padding:0;height:100%;font-family:'Quicksand', system-ui, sans-serif;color:var(--dlp-royal-deep);background:var(--dlp-cream);}
+
+  /* ---------- HEADER ---------- */
+  header.app{
+    position:relative;
+    /* Castle-at-twilight gradient: midnight navy → royal purple → magenta glow */
+    background:
+      radial-gradient(ellipse at 85% 110%, rgba(230,48,138,.35) 0%, transparent 55%),
+      radial-gradient(ellipse at 15% -10%, rgba(155,111,203,.30) 0%, transparent 50%),
+      linear-gradient(135deg,
+        var(--dlp-royal-deep) 0%,
+        var(--dlp-purple-deep) 35%,
+        var(--dlp-purple) 70%,
+        #4a2a8a 100%);
+    color:var(--dlp-white);
+    padding:18px 28px 16px;
+    box-shadow:var(--shadow-soft);
+    z-index:1500;
+  }
+  header.app::before{
+    /* sparkle pattern — gold, lilac, pink and white twinkles across the night sky */
+    content:"";
+    position:absolute; inset:0;
+    clip-path: inset(0);
+    background-image:
+      radial-gradient(circle at 12% 30%, rgba(255,255,255,.90) 0 1.5px, transparent 2px),
+      radial-gradient(circle at 25% 75%, rgba(212,175,111,.85) 0 1.8px, transparent 2.2px),
+      radial-gradient(circle at 42% 20%, rgba(232,206,160,.85) 0 1.2px, transparent 1.6px),
+      radial-gradient(circle at 60% 60%, rgba(155,111,203,.75) 0 1.6px, transparent 2.2px),
+      radial-gradient(circle at 78% 35%, rgba(255,255,255,.85) 0 1.4px, transparent 1.8px),
+      radial-gradient(circle at 88% 80%, rgba(230,48,138,.70) 0 1.6px, transparent 2.2px),
+      radial-gradient(circle at 6%  85%, rgba(255,255,255,.75) 0 1.2px, transparent 1.8px),
+      radial-gradient(circle at 50% 92%, rgba(212,175,111,.7) 0 1.4px, transparent 2px),
+      radial-gradient(circle at 33% 50%, rgba(155,111,203,.55) 0 1.3px, transparent 1.8px),
+      radial-gradient(circle at 70% 15%, rgba(248,200,220,.7) 0 1.3px, transparent 1.8px);
+    pointer-events:none;
+    opacity:.92;
+  }
+  .title-row{
+    display:flex; align-items:center; gap:14px; position:relative; z-index:2;
+  }
+  .castle{
+    font-size:34px;
+    filter: drop-shadow(0 2px 0 rgba(0,0,0,.3));
+  }
+  h1{
+    font-family:'Cinzel', serif;
+    font-weight:700;
+    margin:0;
+    font-size:26px;
+    letter-spacing:.5px;
+  }
+  h1 .magic{
+    font-family:'Mr Dafoe', cursive;
+    /* Lilac-to-champagne magical gradient on the script word */
+    background: linear-gradient(135deg, #E8CEA0 0%, #F8C8DC 45%, #9B6FCB 100%);
+    -webkit-background-clip: text;
+    background-clip: text;
+    -webkit-text-fill-color: transparent;
+    color: var(--dlp-purple-soft); /* fallback */
+    font-weight:400;
+    font-size:38px;
+    margin-right:8px;
+    filter: drop-shadow(0 0 12px rgba(155,111,203,.55));
+  }
+  .subtitle{
+    position:relative; z-index:2;
+    font-size:13px; opacity:.9; margin-top:4px; padding-left:48px;
+    letter-spacing:.3px;
+  }
+
+  /* ---------- CONTROLS ---------- */
+  .controls{
+    position:relative; z-index:3;
+    margin-top:14px;
+    display:flex; flex-wrap:wrap; gap:10px; align-items:center;
+  }
+  .search-wrap{
+    position:relative;
+    flex:1; min-width:260px; max-width:420px;
+  }
+  .search-wrap input{
+    width:100%;
+    padding:11px 14px 11px 40px;
+    border-radius:24px;
+    border:2px solid var(--dlp-gold);
+    background:var(--dlp-white);
+    font-family:inherit;
+    font-size:14px;
+    color:var(--dlp-royal-deep);
+    box-shadow: 0 4px 18px rgba(61,31,102,.22);
+    outline:none;
+  }
+  .search-wrap input:focus{
+    border-color:var(--dlp-purple);
+    box-shadow: 0 0 0 4px rgba(155,111,203,.25), 0 4px 18px rgba(61,31,102,.30);
+  }
+  .search-wrap .icon{
+    position:absolute; left:14px; top:50%; transform:translateY(-50%);
+    font-size:16px; color:var(--dlp-purple); pointer-events:none;
+  }
+  .suggestions{
+    position:absolute; left:0; right:0; top:calc(100% + 6px);
+    background:var(--dlp-white);
+    border-radius:14px;
+    box-shadow:var(--shadow-pop);
+    overflow:hidden;
+    max-height:60vh; overflow-y:auto;
+    display:none;
+    border:1px solid rgba(27,44,106,.08);
+    z-index:5000;
+  }
+  .sugg-group{
+    padding:6px 14px 4px;
+    font-size:10px;
+    font-weight:700;
+    text-transform:uppercase;
+    letter-spacing:1.2px;
+    color:var(--dlp-purple-deep);
+    background: linear-gradient(90deg, rgba(155,111,203,.18), rgba(212,175,111,.10));
+    position:sticky; top:0; z-index:2;
+    border-bottom:1px solid rgba(155,111,203,.30);
+  }
+  .sugg-empty{
+    padding:18px 14px; text-align:center; color:#888; font-size:13px;
+  }
+  .suggestions.show{display:block}
+  .suggestion{
+    padding:10px 14px;
+    display:flex; align-items:center; gap:10px;
+    cursor:pointer;
+    border-bottom:1px solid rgba(27,44,106,.06);
+    color:var(--dlp-royal-deep);
+    transition: background .15s ease;
+  }
+  .suggestion:hover, .suggestion.active{
+    background: linear-gradient(90deg, rgba(212,175,111,.22), rgba(155,111,203,.18));
+  }
+  .suggestion:last-child{border-bottom:none}
+  .suggestion .pin{
+    width:24px;height:24px;border-radius:50%;
+    display:inline-flex;align-items:center;justify-content:center;
+    color:white; font-size:12px; flex-shrink:0;
+  }
+  .suggestion .meta{
+    font-size:11px; opacity:.7; margin-left:auto;
+  }
+
+  .category-bar{
+    display:flex; flex-wrap:wrap; gap:8px;
+  }
+  .cat-btn{
+    background: rgba(255,255,255,.12);
+    color:var(--dlp-white);
+    border:1.5px solid rgba(255,255,255,.45);
+    padding:8px 14px;
+    border-radius:22px;
+    font-family:inherit;
+    font-size:13px; font-weight:600;
+    cursor:pointer;
+    display:inline-flex; align-items:center; gap:6px;
+    transition: all .2s ease;
+    backdrop-filter: blur(4px);
+  }
+  .cat-btn:hover{
+    background: rgba(255,255,255,.22);
+    transform: translateY(-1px);
+  }
+  .cat-btn.active{
+    background: linear-gradient(135deg, var(--dlp-gold-light) 0%, var(--dlp-gold) 100%);
+    color:var(--dlp-royal-deep);
+    border-color:var(--dlp-gold-deep);
+    box-shadow: 0 0 0 3px rgba(212,175,111,.30), 0 4px 12px rgba(61,31,102,.25);
+  }
+  .cat-btn .dot{
+    width:10px;height:10px;border-radius:50%;
+    display:inline-block; background:white;
+  }
+
+  /* ---------- MAP ---------- */
+  .map-wrap{
+    position:relative;
+    /* dynamic viewport height - works correctly on iOS Safari */
+    height: calc(100dvh - var(--header-h, 184px));
+    min-height: 360px;
+  }
+  #map{
+    height: 100%;
+    width:100%;
+    border-top: 3px solid var(--dlp-gold);
+    /* Prevent iOS overscroll bouncing on the map */
+    touch-action: pan-x pan-y;
+  }
+
+  /* Custom marker icons */
+  .pin-marker{
+    width:34px;height:34px;
+    background:var(--dlp-magenta);
+    border:3px solid var(--dlp-white);
+    border-radius:50% 50% 50% 0;
+    transform: rotate(-45deg);
+    box-shadow: 0 4px 14px rgba(61,31,102,.45);
+    display:flex; align-items:center; justify-content:center;
+    color:white; font-size:15px;
+    transition: transform .2s ease;
+  }
+  .pin-marker span{ transform: rotate(45deg); }
+  .pin-marker:hover{
+    transform: rotate(-45deg) scale(1.15);
+  }
+
+  /* Popup styling */
+  .leaflet-popup-content-wrapper{
+    border-radius:16px !important;
+    padding:0 !important;
+    overflow:hidden;
+    box-shadow: 0 14px 44px rgba(61,31,102,.40) !important;
+    border:3px solid var(--dlp-gold);
+  }
+  .leaflet-popup-content{
+    margin:0 !important;
+    width: 300px !important;
+    font-family:'Quicksand', sans-serif;
+  }
+  .leaflet-popup-tip{
+    background:var(--dlp-purple) !important;
+  }
+  .pop-header{
+    /* Twilight castle gradient: navy → purple → magenta hint */
+    background:
+      radial-gradient(circle at 90% 100%, rgba(230,48,138,.35), transparent 60%),
+      linear-gradient(135deg, var(--dlp-royal-deep) 0%, var(--dlp-purple-deep) 55%, var(--dlp-purple) 100%);
+    color:white;
+    padding:12px 16px;
+    position:relative;
+  }
+  .pop-header::after{
+    content:"";
+    position:absolute; left:0; right:0; bottom:-1px; height:6px;
+    background-image: radial-gradient(circle at 8px 0, var(--dlp-purple) 5px, transparent 6px);
+    background-size: 16px 6px;
+    background-position: 0 100%;
+    background-repeat: repeat-x;
+  }
+  .pop-cat{
+    display:inline-block;
+    font-size:10px; font-weight:700; letter-spacing:1.2px; text-transform:uppercase;
+    padding:3px 9px; border-radius:10px;
+    background: linear-gradient(135deg, var(--dlp-gold-light), var(--dlp-gold));
+    color: var(--dlp-royal-deep);
+    margin-bottom:6px;
+    box-shadow: 0 1px 3px rgba(61,31,102,.25);
+  }
+  .pop-title{
+    font-family:'Cinzel', serif;
+    font-size:17px; font-weight:700; line-height:1.2;
+    margin:0;
+  }
+  .pop-body{
+    padding:14px 16px;
+    background:var(--dlp-cream);
+  }
+  .pop-desc{
+    font-size:13px; line-height:1.45; color:#333; margin:0 0 10px;
+  }
+  .branches{
+    background:white;
+    border-radius:10px;
+    padding:8px 10px;
+    margin:8px 0 12px;
+    border:1px solid rgba(27,44,106,.08);
+  }
+  .branches strong{
+    display:block; font-size:11px; text-transform:uppercase; letter-spacing:.8px;
+    color:var(--dlp-magenta); margin-bottom:4px;
+  }
+  .branches ul{margin:0; padding-left:18px; font-size:12px; color:#444}
+  .branches li{ margin:2px 0 }
+  .pop-links{
+    display:flex; gap:8px; flex-wrap:wrap;
+  }
+  .pop-links a{
+    flex:1;
+    text-align:center;
+    text-decoration:none;
+    font-size:12px; font-weight:700;
+    padding:8px 10px;
+    border-radius:20px;
+    transition: transform .15s ease, box-shadow .15s ease;
+    white-space:nowrap;
+    min-width:120px;
+  }
+  .pop-links a.gm{
+    background: linear-gradient(135deg, var(--dlp-magenta), #c41e76);
+    color:white;
+  }
+  .pop-links a.ta{
+    background: linear-gradient(135deg, var(--dlp-purple), var(--dlp-purple-deep));
+    color:white;
+  }
+  .pop-links a:hover{
+    transform: translateY(-2px);
+    box-shadow: 0 6px 14px rgba(0,0,0,.18);
+  }
+
+  /* ---------- LOCATE-ME FLOATING BUTTON ---------- */
+  .locate-fab{
+    position:absolute;
+    right:14px;
+    bottom:22px;
+    width:54px; height:54px;
+    border-radius:50%;
+    border:3px solid var(--dlp-white);
+    background: linear-gradient(135deg, var(--dlp-purple) 0%, var(--dlp-purple-deep) 100%);
+    color:white;
+    font-size:22px;
+    display:flex; align-items:center; justify-content:center;
+    cursor:pointer;
+    box-shadow: 0 8px 22px rgba(61,31,102,.45);
+    z-index:1100;
+    transition: transform .15s ease, box-shadow .2s ease, background .3s ease;
+    -webkit-tap-highlight-color: transparent;
+  }
+  .locate-fab:hover{
+    transform: scale(1.06);
+    box-shadow: 0 10px 28px rgba(61,31,102,.55);
+  }
+  .locate-fab:active{ transform: scale(.95); }
+  .locate-fab.seeking{
+    background: linear-gradient(135deg, var(--dlp-magenta), var(--dlp-purple));
+    animation: locate-pulse 1.2s ease-in-out infinite;
+  }
+  .locate-fab.active{
+    background: linear-gradient(135deg, var(--dlp-magenta), #c41e76);
+  }
+  @keyframes locate-pulse{
+    0%, 100% { box-shadow: 0 8px 22px rgba(61,31,102,.45), 0 0 0 0 rgba(230,48,138,.55); }
+    50%      { box-shadow: 0 8px 22px rgba(61,31,102,.45), 0 0 0 14px rgba(230,48,138,0); }
+  }
+
+  /* ---------- USER LOCATION MARKER ---------- */
+  .user-marker{
+    width:22px; height:22px;
+    border-radius:50%;
+    background: var(--dlp-magenta);
+    border: 3px solid white;
+    box-shadow: 0 0 0 2px var(--dlp-purple-deep), 0 4px 14px rgba(61,31,102,.5);
+    position: relative;
+  }
+  .user-marker::before{
+    /* outer pulse ring */
+    content:"";
+    position:absolute;
+    inset:-6px;
+    border-radius:50%;
+    background: rgba(230,48,138,.35);
+    animation: user-pulse 1.8s ease-out infinite;
+  }
+  @keyframes user-pulse{
+    0%   { transform: scale(.6); opacity: .9; }
+    100% { transform: scale(2.2); opacity: 0; }
+  }
+
+  /* ---------- TOAST ---------- */
+  .toast{
+    position:fixed;
+    left:50%; transform:translateX(-50%);
+    bottom:24px;
+    background: linear-gradient(135deg, var(--dlp-royal-deep), var(--dlp-purple-deep));
+    color:white;
+    padding:11px 18px;
+    border-radius:24px;
+    font-size:13px; font-weight:600;
+    box-shadow: 0 12px 32px rgba(61,31,102,.50);
+    border: 2px solid var(--dlp-gold);
+    z-index:5500;
+    opacity:0;
+    pointer-events:none;
+    transition: opacity .25s ease, transform .25s ease;
+    max-width: calc(100vw - 32px);
+    text-align:center;
+  }
+  .toast.show{
+    opacity:1;
+    transform:translateX(-50%) translateY(-4px);
+  }
+  @media (max-width: 680px){
+    .locate-fab{ width:48px; height:48px; font-size:20px; bottom:18px; right:12px; }
+    .toast{ font-size:12px; padding:9px 14px; bottom:80px; }
+  }
+
+  /* Legend / count badge */
+  .stats{
+    position:absolute; right:14px; top:14px;
+    background: rgba(255,255,255,.96);
+    padding:10px 14px;
+    border-radius:14px;
+    box-shadow: 0 8px 24px rgba(61,31,102,.28);
+    z-index:1000;
+    font-size:12px; color:var(--dlp-purple-deep);
+    border:2px solid var(--dlp-gold);
+  }
+  .stats b{ color:var(--dlp-purple); font-size:16px; }
+
+  /* ====================================
+     RESPONSIVE — TABLET (≤ 900px)
+     ==================================== */
+  @media (max-width: 900px){
+    header.app{ padding:14px 18px 12px; }
+    .search-wrap{ max-width:none; }
+  }
+
+  /* ====================================
+     RESPONSIVE — MOBILE (≤ 680px)
+     ==================================== */
+  @media (max-width: 680px){
+    header.app{
+      padding:12px 14px 10px;
+    }
+    .title-row{ gap:10px; }
+    .castle{ font-size:28px; }
+    h1{ font-size:17px; letter-spacing:.2px; }
+    h1 .magic{ font-size:28px; margin-right:4px; }
+    .subtitle{
+      padding-left:0;
+      font-size:11px;
+      margin-top:2px;
+      line-height:1.3;
+    }
+    .controls{
+      margin-top:10px;
+      gap:8px;
+      flex-direction: column;
+      align-items: stretch;
+    }
+    .search-wrap{
+      width:100%; min-width:0; max-width:none;
+      flex:1 1 auto;
+    }
+    .search-wrap input{
+      padding:12px 14px 12px 38px;
+      font-size:15px;          /* >=16px prevents iOS zoom-on-focus; 15 still mostly ok */
+    }
+    /* Category bar: horizontal scroll instead of wrapping to multiple lines */
+    .category-bar{
+      flex-wrap: nowrap;
+      overflow-x: auto;
+      gap:6px;
+      padding-bottom:2px;
+      margin: 0 -14px;            /* extend to header edges */
+      padding-left:14px;
+      padding-right:14px;
+      scrollbar-width: none;       /* Firefox */
+      -ms-overflow-style: none;    /* IE/Edge */
+      scroll-snap-type: x mandatory;
+      -webkit-overflow-scrolling: touch;
+    }
+    .category-bar::-webkit-scrollbar{ display:none; }
+    .cat-btn{
+      flex: 0 0 auto;
+      scroll-snap-align: start;
+      padding:8px 12px;
+      font-size:12px;
+    }
+
+    /* Suggestions dropdown — taller, easier touch targets */
+    .suggestions{
+      max-height: 55vh;
+      max-height: 55dvh;
+      border-radius:12px;
+    }
+    .suggestion{
+      padding:12px 14px;
+      font-size:14px;
+      min-height:44px;
+      gap:12px;
+    }
+    .suggestion .pin{ width:28px; height:28px; font-size:13px; }
+    .sugg-group{ font-size:11px; padding:8px 14px 6px; }
+
+    /* Map */
+    .map-wrap{ min-height:300px; }
+
+    /* Stats badge — smaller, sits in corner without crowding */
+    .stats{
+      right:10px; top:10px;
+      padding:6px 10px;
+      font-size:11px;
+      border-radius:10px;
+    }
+    .stats b{ font-size:14px; }
+
+    /* Popups — fit on phone screens */
+    .leaflet-popup-content{
+      width: calc(100vw - 70px) !important;
+      max-width: 320px !important;
+    }
+    .pop-header{ padding:10px 14px; }
+    .pop-title{ font-size:15px; }
+    .pop-cat{ font-size:9px; padding:2px 7px; }
+    .pop-body{ padding:12px 14px; }
+    .pop-desc{ font-size:12.5px; }
+    .pop-links{ gap:6px; }
+    .pop-links a{
+      font-size:12px;
+      padding:10px 8px;
+      min-width:0;
+      min-height:40px;
+      display:flex; align-items:center; justify-content:center;
+    }
+    .branches ul{ font-size:11.5px; }
+
+    /* Larger Leaflet zoom buttons for touch */
+    .leaflet-touch .leaflet-bar a{
+      width:36px !important;
+      height:36px !important;
+      line-height:34px !important;
+      font-size:20px !important;
+    }
+  }
+
+  /* ====================================
+     RESPONSIVE — SMALL PHONE (≤ 380px)
+     ==================================== */
+  @media (max-width: 380px){
+    h1{ font-size:15px; }
+    h1 .magic{ font-size:24px; }
+    .castle{ font-size:24px; }
+    .subtitle{ display:none; }       /* save space on the smallest screens */
+    .stats{ padding:5px 8px; font-size:10px; }
+  }
+
+  /* ====================================
+     LANDSCAPE PHONE — compact header
+     ==================================== */
+  @media (max-height: 480px) and (orientation: landscape){
+    header.app{ padding:8px 14px 8px; }
+    .subtitle{ display:none; }
+    .controls{ flex-direction: row; }
+    .map-wrap{ min-height:240px; }
+  }
+</style>
+</head>
+<body>
+
+<header class="app">
+  <div class="title-row">
+    <div class="castle">🏰</div>
+    <h1><span class="magic">Magical</span>Paris Guide</h1>
+  </div>
+  <div class="subtitle">✨ Click any pin to discover the magic — restaurants, cafés, attractions & kid-friendly spots ✨</div>
+
+  <div class="controls">
+    <div class="search-wrap">
+      <span class="icon">🔍</span>
+      <input id="search" type="text" placeholder="Click to see all places, or type to search…" autocomplete="off"/>
+      <div id="suggestions" class="suggestions" role="listbox"></div>
+    </div>
+
+    <div class="category-bar" id="categoryBar">
+      <button class="cat-btn active" data-cat="all"><span class="dot" style="background:#fff"></span>All Places</button>
+      <button class="cat-btn" data-cat="kids"><span class="dot" style="background:#7BD3F7"></span>Kids</button>
+      <button class="cat-btn" data-cat="dining"><span class="dot" style="background:#E6308A"></span>Lunch &amp; Dinner</button>
+      <button class="cat-btn" data-cat="coffee"><span class="dot" style="background:#C58A4B"></span>Breakfast &amp; Coffee</button>
+      <button class="cat-btn" data-cat="attraction"><span class="dot" style="background:#6B3FA0"></span>Attractions</button>
+    </div>
+  </div>
+</header>
+
+<div class="map-wrap">
+  <div id="map"></div>
+  <div class="stats" id="stats">Showing <b id="count">—</b> places</div>
+  <button id="locateBtn" class="locate-fab" type="button" title="Show my location" aria-label="Show my location">📍</button>
+</div>
+<div id="toast" class="toast" role="status" aria-live="polite"></div>
+
+<script>
+/* ---------------- DATA ---------------- */
+/* Each place:
+   name, cat (kids|dining|coffee|attraction), lat, lng, desc,
+   branches (array, optional), gmaps (search url), ta (TripAdvisor search url)
+*/
+
+const PLACES = [
+  /* ===================== KIDS ===================== */
+  { name:"Parc Astérix", cat:"kids", lat:49.1361, lng:2.5719,
+    desc:"A Gallic-themed amusement park north of Paris with roller coasters, shows and family rides — perfect day-trip alternative to Disneyland.",
+    gmaps:"Parc Astérix Plailly", ta:"Parc Astérix" },
+
+  { name:"Muséum National d'Histoire Naturelle", cat:"kids", lat:48.8430, lng:2.3565,
+    desc:"Set inside the Jardin des Plantes, kids love the Grande Galerie de l'Évolution — a parade of giraffes, elephants and dinosaurs.",
+    gmaps:"Muséum National d'Histoire Naturelle Paris", ta:"Muséum National d'Histoire Naturelle Paris" },
+
+  { name:"Cirque d'Hiver Bouglione", cat:"kids", lat:48.8635, lng:2.3667,
+    desc:"A historic 1852 circus with acrobats, clowns and animal-free spectacles in a beautiful 20-sided rotunda.",
+    gmaps:"Cirque d'Hiver Bouglione Paris", ta:"Cirque d'Hiver Paris" },
+
+  { name:"Musée de l'Air et de l'Espace (Balloons & Aircraft)", cat:"kids", lat:48.9520, lng:2.4427,
+    desc:"Home to early hot-air balloons, Concorde, and historic flying machines — at Le Bourget airport, just outside Paris.",
+    gmaps:"Musée de l'Air et de l'Espace Le Bourget", ta:"Musee de l'Air et de l'Espace" },
+
+  { name:"Aquamundo — Center Parcs Villages Nature", cat:"kids", lat:48.8088, lng:2.7793,
+    desc:"A tropical-lagoon water park beside Disneyland Paris — slides, wave pools and a kiddie zone under a glass dome.",
+    gmaps:"Villages Nature Paris Aquamundo", ta:"Villages Nature Paris" },
+
+  { name:"Macaron Baking Class — Maison Fleuret", cat:"kids", lat:48.8566, lng:2.3522,
+    desc:"Hands-on macaron workshops in a charming Parisian pâtisserie — kids learn to pipe, bake and decorate their own boxful.",
+    gmaps:"Maison Fleuret macaron class Paris", ta:"macaron baking class Paris" },
+
+  { name:"Jellycat Patisserie — Le Bon Marché", cat:"kids", lat:48.8511, lng:2.3245,
+    desc:"A whimsical plush 'bakery' inside Le Bon Marché where kids order Jellycat croissants and éclairs — pure magic for little ones.",
+    gmaps:"Jellycat Patisserie Le Bon Marché Paris", ta:"Le Bon Marché Paris" },
+
+  { name:"Cité des Sciences et de l'Industrie", cat:"kids", lat:48.8959, lng:2.3884,
+    desc:"Europe's largest science museum — interactive galleries, a planetarium, and the wonderful Cité des Enfants for ages 2-12.",
+    gmaps:"Cité des Sciences et de l'Industrie Paris", ta:"Cite des Sciences Paris" },
+
+  { name:"Disneyland Paris", cat:"kids", lat:48.8722, lng:2.7758,
+    desc:"The original Magical Kingdom of Europe — Sleeping Beauty Castle, Walt Disney Studios, parades and meet-and-greets.",
+    gmaps:"Disneyland Paris", ta:"Disneyland Paris" },
+
+  /* ===================== LUNCH & DINNER ===================== */
+  { name:"InterContinental Paris Le Grand", cat:"dining", lat:48.8714, lng:2.3322,
+    desc:"Grand hotel beside Opéra Garnier — refined French dining at Café de la Paix (or rooftop Bellevue bar for cocktails).",
+    gmaps:"InterContinental Paris Le Grand", ta:"InterContinental Paris Le Grand" },
+
+  { name:"Siena", cat:"dining", lat:48.8676, lng:2.3045,
+    desc:"Sleek Italian on Avenue Montaigne by Costes — handmade pasta, Tuscan classics, and the see-and-be-seen crowd.",
+    gmaps:"Siena restaurant Paris Avenue Montaigne", ta:"Siena restaurant Paris" },
+
+  { name:"Shirvan Café Métisse", cat:"dining", lat:48.8650, lng:2.3030,
+    desc:"Akrame Benallal's Silk Road journey on a plate — Persian, Lebanese and Caucasian flavours near Pont de l'Alma.",
+    gmaps:"Shirvan Café Métisse Paris", ta:"Shirvan Cafe Metisse Paris" },
+
+  { name:"Shabestan", cat:"dining", lat:48.8748, lng:2.3007,
+    desc:"Refined Iranian dining near the Champs-Élysées — saffron rices, kebabs, and tahdig done beautifully.",
+    gmaps:"Shabestan restaurant Paris", ta:"Shabestan Paris" },
+
+  { name:"Cuisine Persane (Mazeh)", cat:"dining", lat:48.8556, lng:2.2920,
+    desc:"Authentic Persian comfort food — ghormeh sabzi, fesenjan and grilled koobideh in the 15th arrondissement.",
+    gmaps:"Mazeh Persian restaurant Paris", ta:"Mazeh Persian Paris" },
+
+  { name:"L'Avenue", cat:"dining", lat:48.8665, lng:2.3037,
+    desc:"Iconic Costes brasserie on Avenue Montaigne — famous for cheesecake, people-watching and the Parisian glamour set.",
+    gmaps:"L'Avenue restaurant Paris Avenue Montaigne", ta:"L'Avenue Restaurant Paris" },
+
+  { name:"CoCo", cat:"dining", lat:48.8718, lng:2.3318,
+    desc:"Glamorous restaurant tucked behind Opéra Garnier — Mediterranean menu in a theatrical, Wes-Anderson-meets-belle-époque setting.",
+    gmaps:"CoCo restaurant Paris Opera", ta:"CoCo Paris restaurant" },
+
+  { name:"Diep", cat:"dining", lat:48.8718, lng:2.3070,
+    desc:"Old-school Parisian Chinese-Thai near the Champs-Élysées — beloved for its dim sum, Peking duck and martinis.",
+    gmaps:"Diep restaurant Paris", ta:"Diep restaurant Paris" },
+
+  { name:"Junk — Burger Bar", cat:"dining", lat:48.8696, lng:2.3438,
+    desc:"Cult Parisian burger spot — smashed patties, sticky buns and proper fries.",
+    gmaps:"Junk burger Paris", ta:"Junk burger Paris" },
+
+  { name:"MUN", cat:"dining", lat:48.8732, lng:2.3070,
+    desc:"Modern Japanese izakaya near Champs-Élysées — sushi, sashimi, robatayaki grills and elegant cocktails.",
+    gmaps:"MUN restaurant Paris", ta:"MUN restaurant Paris" },
+
+  { name:"Candelaria", cat:"dining", lat:48.8635, lng:2.3636,
+    desc:"Le Marais taqueria with a hidden speakeasy cocktail bar in the back — tacos, tostadas and award-winning agave drinks.",
+    gmaps:"Candelaria Paris taqueria", ta:"Candelaria Paris" },
+
+  { name:"Noura (Lebanese)", cat:"dining", lat:48.8676, lng:2.3035,
+    desc:"Beloved Parisian Lebanese institution with multiple locations — mezze, shawarma and pastries.",
+    branches:[
+      "Noura Charles de Gaulle — 27 Av. Marceau, 75116",
+      "Noura Boulogne — 159 Rte de la Reine, 92100",
+      "Noura Pavillon — 21 Av. Marceau, 75116",
+      "Noura Vaugirard — 121 Bd du Montparnasse, 75006"
+    ],
+    gmaps:"Noura Lebanese restaurant Paris", ta:"Noura Paris" },
+
+  { name:"Bambini", cat:"dining", lat:48.8645, lng:2.2978,
+    desc:"Big Mamma's stylish Italian at the Palais de Tokyo — Roman-style pizzas, fresh pasta and Aperol-fuelled aperitivo with Eiffel views.",
+    gmaps:"Bambini Palais de Tokyo Paris", ta:"Bambini Palais de Tokyo Paris" },
+
+  { name:"Gigi", cat:"dining", lat:48.8666, lng:2.3013,
+    desc:"Glamorous rooftop Italian above Avenue Montaigne — burrata, truffle pasta and dramatic skyline views over the Eiffel Tower.",
+    gmaps:"Gigi rooftop restaurant Paris Montaigne", ta:"Gigi Paris restaurant" },
+
+  { name:"Pizzeria Popolare", cat:"dining", lat:48.8678, lng:2.3490,
+    desc:"Big Mamma's pizza powerhouse — long lines, towering pies, Italian everything-bagel vibes in the 2nd arrondissement.",
+    gmaps:"Pizzeria Popolare Big Mamma Paris", ta:"Pizzeria Popolare Paris" },
+
+  /* ===================== BREAKFAST & COFFEE ===================== */
+  { name:"Ladurée", cat:"coffee", lat:48.8704, lng:2.3074,
+    desc:"The legendary macaron house since 1862 — pastel salons across Paris, perfect for breakfast pastries and pistachio macarons.",
+    branches:[
+      "Ladurée Champs-Élysées — 75 Av. des Champs-Élysées, 75008",
+      "Ladurée Royale — 16 Rue Royale, 75008",
+      "Ladurée Bonaparte — 21 Rue Bonaparte, 75006",
+      "Ladurée Printemps Haussmann — 64 Bd Haussmann, 75009"
+    ],
+    gmaps:"Ladurée Paris", ta:"Laduree Paris" },
+
+  { name:"Carette", cat:"coffee", lat:48.8629, lng:2.2899,
+    desc:"Belle-époque tearoom famous for its viennoiseries, hot chocolate and macarons — across from the Eiffel Tower.",
+    branches:[
+      "Carette Trocadéro — 4 Pl. du Trocadéro, 75016",
+      "Carette Place des Vosges — 25 Pl. des Vosges, 75003"
+    ],
+    gmaps:"Carette Paris", ta:"Carette Paris" },
+
+  { name:"Kozy Bosquet", cat:"coffee", lat:48.8589, lng:2.3060,
+    desc:"Bright, all-day brunch café with avocado toasts, pancakes and excellent coffee — in the chic 7th near the Eiffel Tower.",
+    gmaps:"Kozy Bosquet Paris", ta:"Kozy Bosquet Paris" },
+
+  { name:"Ritz Paris — Salon Proust", cat:"coffee", lat:48.8682, lng:2.3287,
+    desc:"Afternoon tea at the Ritz — Proust-inspired madeleines, palace setting and impeccable service on Place Vendôme.",
+    gmaps:"Ritz Paris Salon Proust", ta:"Ritz Paris" },
+
+  { name:"Maurice Sfez Café (Waffles)", cat:"coffee", lat:48.8569, lng:2.3520,
+    desc:"Brussels-style waffles done the Parisian way — soft, caramelised and topped with seasonal fruits.",
+    gmaps:"Maurice Sfez waffles Paris", ta:"Maurice Sfez Paris" },
+
+  { name:"Cult Café", cat:"coffee", lat:48.8745, lng:2.3486,
+    desc:"Specialty third-wave coffee bar with single-origin pour-overs and house-baked banana bread.",
+    gmaps:"Cult Café Paris specialty coffee", ta:"Cult Cafe Paris" },
+
+  { name:"Chapon Chocolatier — Rue du Bac", cat:"coffee", lat:48.8540, lng:2.3251,
+    desc:"Maître chocolatier Patrice Chapon's flagship — try the legendary mousse-au-chocolat bar and rare single-origin pralines.",
+    gmaps:"Chapon Chocolatier Rue du Bac Paris", ta:"Chapon Chocolatier Paris" },
+
+  { name:"La Maison d'Isabelle (Best Croissant)", cat:"coffee", lat:48.8499, lng:2.3470,
+    desc:"Award-winning boulangerie crowned best butter croissant in Paris — flaky, golden, butter-bomb perfection.",
+    gmaps:"La Maison d'Isabelle boulangerie Paris", ta:"La Maison d'Isabelle Paris" },
+
+  { name:"Cortado", cat:"coffee", lat:48.8678, lng:2.3445,
+    desc:"Tiny specialty coffee shop with seriously good espresso and flat whites — a barista favourite.",
+    gmaps:"Cortado coffee Paris", ta:"Cortado Paris coffee" },
+
+  { name:"Maison Méert", cat:"coffee", lat:48.8556, lng:2.3676,
+    desc:"Lille's historic patissier landed in the Marais — gauffres fines (vanilla waffles) since 1761.",
+    gmaps:"Maison Méert Paris Marais", ta:"Maison Meert Paris" },
+
+  { name:"Café de Flore", cat:"coffee", lat:48.8540, lng:2.3327,
+    desc:"The Saint-Germain literary café — Sartre, de Beauvoir and Hemingway sat here. Order hot chocolate and croque-monsieur.",
+    gmaps:"Café de Flore Paris", ta:"Cafe de Flore Paris" },
+
+  { name:"Mamiche", cat:"coffee", lat:48.8786, lng:2.3438,
+    desc:"Cult neo-boulangerie by two female bakers — babka, brioche feuilletée and 'pain des copains' sourdough.",
+    branches:[
+      "Mamiche Condorcet — 45 Rue Condorcet, 75009",
+      "Mamiche Notre-Dame de Lorette — 32 Rue du Château d'Eau, 75010"
+    ],
+    gmaps:"Mamiche bakery Paris", ta:"Mamiche Paris bakery" },
+
+  { name:"Plaq (Hot Chocolate)", cat:"coffee", lat:48.8651, lng:2.3530,
+    desc:"Bean-to-bar craft chocolate in the 3rd — the hot chocolate is dense, fragrant and arguably the city's best.",
+    gmaps:"Plaq chocolate Paris", ta:"Plaq Paris" },
+
+  { name:"Angelina", cat:"coffee", lat:48.8649, lng:2.3284,
+    desc:"Belle-époque salon on rue de Rivoli famed for its impossibly rich 'Chocolat Africain' and Mont Blanc dessert.",
+    branches:[
+      "Angelina Rivoli — 226 Rue de Rivoli, 75001",
+      "Angelina Versailles — Place d'Armes, Château de Versailles",
+      "Angelina Galeries Lafayette — 40 Bd Haussmann, 75009"
+    ],
+    gmaps:"Angelina Paris", ta:"Angelina Paris" },
+
+  { name:"Café du Carrousel (Louvre)", cat:"coffee", lat:48.8617, lng:2.3325,
+    desc:"Café tucked under the Louvre's Carrousel arcade — quick coffee stop before or after the galleries.",
+    gmaps:"Café Carrousel Louvre Paris", ta:"Cafe Carrousel Louvre" },
+
+  { name:"Café Saint-Laurent", cat:"coffee", lat:48.8651, lng:2.3164,
+    desc:"YSL-inspired coffee bar at the Musée Yves Saint Laurent — chic, design-led and serving excellent espresso.",
+    gmaps:"Café Saint Laurent Paris museum", ta:"Cafe Saint Laurent Paris" },
+
+  { name:"Café Kitsuné", cat:"coffee", lat:48.8657, lng:2.3380,
+    desc:"Maison Kitsuné's beloved coffee bars — fox logo, Aussie-style flat whites and the best people-watching terrace.",
+    branches:[
+      "Café Kitsuné Palais Royal — 51 Galerie de Montpensier, 75001",
+      "Café Kitsuné Louvre — 2 Place André Malraux, 75001",
+      "Café Kitsuné Saint-Sulpice — 36 Rue de Seine, 75006"
+    ],
+    gmaps:"Café Kitsuné Paris", ta:"Cafe Kitsune Paris" },
+
+  { name:"Le Café Marly", cat:"coffee", lat:48.8617, lng:2.3361,
+    desc:"Costes brothers café under the Louvre's arcades, looking straight at the glass pyramid — drinks with a view.",
+    gmaps:"Le Café Marly Louvre Paris", ta:"Cafe Marly Paris" },
+
+  { name:"1er Prix 2018 — Le Grenier à Pain", cat:"coffee", lat:48.8870, lng:2.3403,
+    desc:"Winner of Paris's 'Best Baguette' competition (1er Prix de la Baguette de Tradition) — try a still-warm baguette and chausson aux pommes.",
+    gmaps:"Le Grenier à Pain Abbesses Paris", ta:"Le Grenier a Pain Paris" },
+
+  { name:"Saint Pearl", cat:"coffee", lat:48.8500, lng:2.3399,
+    desc:"Charming brunch café on the Left Bank — pancakes, eggs benedict and great matcha latte.",
+    gmaps:"Saint Pearl café Paris", ta:"Saint Pearl Paris" },
+
+  { name:"Immersion Café", cat:"coffee", lat:48.8597, lng:2.3580,
+    desc:"Specialty roaster and brunch spot near Place de la République — single-origin coffees and seasonal plates.",
+    gmaps:"Immersion Café Paris", ta:"Immersion Cafe Paris" },
+
+  { name:"Season", cat:"coffee", lat:48.8617, lng:2.3637,
+    desc:"Marais brunch favourite — granola bowls, smashed avo and Aussie-inspired flat whites.",
+    gmaps:"Season café Marais Paris", ta:"Season Paris cafe" },
+
+  { name:"Bo&Mie / Bon Jo Boulangerie", cat:"coffee", lat:48.8633, lng:2.3461,
+    desc:"Award-winning artisan bakery near Étienne-Marcel — viennoiseries, cookies and signature flan parisien.",
+    gmaps:"Bo&Mie boulangerie Paris", ta:"Bo&Mie Paris" },
+
+  { name:"Kith Treats Paris", cat:"coffee", lat:48.8521, lng:2.3251,
+    desc:"NYC streetwear meets ice-cream parlour — cereal milkshakes, soft-serve sundaes and Kith merch tucked next to Le Bon Marché.",
+    gmaps:"Kith Treats Paris", ta:"Kith Treats Paris" },
+
+  { name:"Bacha Coffee", cat:"coffee", lat:48.8717, lng:2.3019,
+    desc:"Ornate Moroccan-Parisian café (from Singapore's Bacha) serving 200+ 100% arabica blends — a gilded breakfast experience.",
+    branches:[
+      "Bacha Coffee Champs-Élysées — Galeries Lafayette Champs-Élysées, 75008",
+      "Bacha Coffee Haussmann — Galeries Lafayette Haussmann, 75009"
+    ],
+    gmaps:"Bacha Coffee Paris", ta:"Bacha Coffee Paris" },
+
+  { name:"Noir Coffee", cat:"coffee", lat:48.8627, lng:2.3477,
+    desc:"Sleek specialty roaster — espresso, filter brews and minimalist plates. A favourite for serious coffee drinkers.",
+    gmaps:"Noir Coffee Paris specialty", ta:"Noir Coffee Paris" },
+
+  { name:"Ralph's at Ralph Lauren", cat:"coffee", lat:48.8543, lng:2.3324,
+    desc:"American brasserie inside the Ralph Lauren Saint-Germain mansion — pancakes, burgers and the prettiest cobblestone courtyard.",
+    gmaps:"Ralph's Ralph Lauren Saint Germain Paris", ta:"Ralph's Paris Ralph Lauren" },
+
+  { name:"Maison Gosselin", cat:"coffee", lat:48.8624, lng:2.3417,
+    desc:"Storied 1860s boulangerie on Rue Saint-Honoré — flaky croissants, baguettes and golden chausson aux pommes.",
+    gmaps:"Maison Gosselin boulangerie Paris Saint Honoré", ta:"Gosselin Paris bakery" },
+
+  { name:"Pierre Hermé", cat:"coffee", lat:48.8521, lng:2.3343,
+    desc:"The 'Picasso of Pastry' — Ispahan macarons (rose, lychee, raspberry), seasonal cakes and the rue Bonaparte flagship.",
+    branches:[
+      "Pierre Hermé Bonaparte — 72 Rue Bonaparte, 75006",
+      "Pierre Hermé Cambon — 4 Rue Cambon, 75001",
+      "Pierre Hermé Champs-Élysées — Publicis Drugstore, 75008",
+      "Pierre Hermé Vaugirard — 185 Rue de Vaugirard, 75015"
+    ],
+    gmaps:"Pierre Hermé Paris macarons", ta:"Pierre Hermé Paris" },
+
+  { name:"Café L'Occitane", cat:"coffee", lat:48.8716, lng:2.3019,
+    desc:"L'Occitane's Provençal-themed café on the Champs-Élysées — lavender pastries, honey-glazed treats and floral teas.",
+    gmaps:"Café L'Occitane Champs-Élysées Paris", ta:"Cafe L'Occitane Paris" },
+
+  { name:"Moka Café", cat:"coffee", lat:48.8800, lng:2.3399,
+    desc:"Neighbourhood specialty café in SoPi — slow-pour coffee, cinnamon buns and a cosy book-lined corner.",
+    gmaps:"Moka café Paris SoPi", ta:"Moka cafe Paris" },
+
+  /* ===================== ATTRACTIONS ===================== */
+  { name:"Seine River Cruise — Bateaux Mouches", cat:"attraction", lat:48.8639, lng:2.3038,
+    desc:"The classic glass-roofed river cruise from Pont de l'Alma — sail past the Eiffel Tower, Notre-Dame and the Louvre.",
+    gmaps:"Bateaux Mouches Pont Alma Paris", ta:"Bateaux Mouches Seine cruise" },
+
+  { name:"Place Vendôme → Louvre Walk", cat:"attraction", lat:48.8675, lng:2.3294,
+    desc:"Walk past the Ritz, Place Vendôme's column, Rue Saint-Honoré boutiques, the Comédie-Française, and arrive at the Louvre.",
+    gmaps:"Place Vendôme Paris", ta:"Place Vendôme Paris" },
+
+  { name:"Scavenger Hunt at the Louvre", cat:"attraction", lat:48.8606, lng:2.3376,
+    desc:"Family-friendly self-guided hunts (THATLou, etc.) through the Louvre — kids decode clues to find masterpieces.",
+    gmaps:"Louvre Museum Paris", ta:"Louvre scavenger hunt Paris" },
+
+  { name:"Musée d'Orsay", cat:"attraction", lat:48.8600, lng:2.3266,
+    desc:"Belle-époque railway station turned home of Impressionism — Monet, Van Gogh, Degas and Renoir under a gilded clock.",
+    gmaps:"Musée d'Orsay Paris", ta:"Musee d'Orsay Paris" },
+
+  { name:"Officine Universelle Buly 1803", cat:"attraction", lat:48.8567, lng:2.3349,
+    desc:"Apothecary boutique with hand-calligraphed labels — perfumes, candles and beauty pomades, on Rue Bonaparte.",
+    branches:[
+      "Buly 1803 Saint-Germain — 6 Rue Bonaparte, 75006",
+      "Buly 1803 Le Marais — 45 Rue de Saintonge, 75003"
+    ],
+    gmaps:"Officine Universelle Buly Paris", ta:"Officine Universelle Buly Paris" },
+
+  { name:"Montmartre (Art District)", cat:"attraction", lat:48.8867, lng:2.3431,
+    desc:"Cobbled hills, the Sacré-Cœur basilica, artists' easels at Place du Tertre, and the haunts of Picasso, Renoir and Van Gogh.",
+    gmaps:"Montmartre Paris Sacré-Cœur", ta:"Montmartre Paris" },
+
+  { name:"Le Bon Marché", cat:"attraction", lat:48.8511, lng:2.3245,
+    desc:"The world's first department store (1852) — luxury fashion, La Grande Épicerie food hall and the Jellycat Patisserie.",
+    gmaps:"Le Bon Marché Rive Gauche Paris", ta:"Le Bon Marche Paris" },
+
+  { name:"Saint-Germain-des-Prés", cat:"attraction", lat:48.8540, lng:2.3340,
+    desc:"Literary Left Bank neighbourhood of cafés, antique shops and the Romanesque Saint-Germain-des-Prés Abbey.",
+    gmaps:"Saint-Germain-des-Prés Paris", ta:"Saint Germain des Pres Paris" },
+
+  { name:"Trocadéro (Eiffel Tower View Cafés)", cat:"attraction", lat:48.8617, lng:2.2884,
+    desc:"The very best Eiffel Tower viewing terrace — flanked by Carette and Café de l'Homme for coffee with a view.",
+    gmaps:"Trocadéro Paris Eiffel Tower view", ta:"Trocadero Paris" },
+
+  { name:"Opéra Garnier", cat:"attraction", lat:48.8720, lng:2.3316,
+    desc:"Napoleon III's gilded jewel-box opera house — visit the Grand Foyer, Chagall ceiling and Phantom-of-the-Opera lake (rumour).",
+    gmaps:"Palais Garnier Opera Paris", ta:"Palais Garnier Paris" },
+
+  { name:"Galeries Lafayette Haussmann", cat:"attraction", lat:48.8736, lng:2.3320,
+    desc:"Iconic Art Nouveau department store with a stained-glass dome and panoramic rooftop view across Paris.",
+    gmaps:"Galeries Lafayette Haussmann Paris", ta:"Galeries Lafayette Paris" },
+
+  { name:"Notre-Dame & Châtelet", cat:"attraction", lat:48.8530, lng:2.3499,
+    desc:"The Île de la Cité — Notre-Dame Cathedral, Sainte-Chapelle's stained-glass chapel, and bustling Châtelet square next door.",
+    gmaps:"Notre Dame Cathedral Paris Chatelet", ta:"Notre Dame Paris" },
+
+  { name:"Passage Jouffroy", cat:"attraction", lat:48.8716, lng:2.3424,
+    desc:"Glass-roofed 1840s shopping passage — antique books, vintage toys, Musée Grévin wax museum and Hôtel Chopin.",
+    gmaps:"Passage Jouffroy Paris", ta:"Passage Jouffroy Paris" },
+
+  { name:"La Vallée Village", cat:"attraction", lat:48.8429, lng:2.7831,
+    desc:"Open-air luxury outlet village next to Disneyland Paris — Gucci, Prada, Sandro and more at up to 60% off. Great combo day with the parks.",
+    gmaps:"La Vallée Village outlet Paris", ta:"La Vallée Village" }
+];
+
+/* category colours / icons */
+const CAT_META = {
+  kids:       { color:"#7BD3F7", emoji:"🎠", label:"Kids" },
+  dining:     { color:"#E6308A", emoji:"🍽️", label:"Lunch & Dinner" },
+  coffee:     { color:"#C58A4B", emoji:"☕", label:"Breakfast & Coffee" },
+  attraction: { color:"#6B3FA0", emoji:"✨", label:"Attractions" }   // Maleficent purple
+};
+
+/* ---------------- MAP ---------------- */
+const map = L.map('map', { zoomControl:true, scrollWheelZoom:true }).setView([48.8606, 2.3376], 13);
+
+L.tileLayer('https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png', {
+  attribution:'&copy; OpenStreetMap &copy; CARTO',
+  subdomains:'abcd', maxZoom:19
+}).addTo(map);
+
+const markers = [];
+
+function makeIcon(cat){
+  const meta = CAT_META[cat];
+  const html = `<div class="pin-marker" style="background:${meta.color}"><span>${meta.emoji}</span></div>`;
+  return L.divIcon({ html, className:'', iconSize:[34,34], iconAnchor:[17,34], popupAnchor:[0,-32] });
+}
+
+function popupHTML(p){
+  const meta = CAT_META[p.cat];
+  const q = encodeURIComponent(p.gmaps || (p.name + ' Paris'));
+  const t = encodeURIComponent(p.ta   || (p.name + ' Paris'));
+  const gmapsURL = `https://www.google.com/maps/search/?api=1&query=${q}`;
+  const taURL    = `https://www.tripadvisor.com/Search?q=${t}`;
+  const branchesHTML = (p.branches && p.branches.length) ? `
+    <div class="branches">
+      <strong>📍 Locations (${p.branches.length})</strong>
+      <ul>${p.branches.map(b=>`<li>${b}</li>`).join('')}</ul>
+    </div>` : '';
+  return `
+    <div class="pop-header">
+      <span class="pop-cat">${meta.emoji} ${meta.label}</span>
+      <h3 class="pop-title">${p.name}</h3>
+    </div>
+    <div class="pop-body">
+      <p class="pop-desc">${p.desc}</p>
+      ${branchesHTML}
+      <div class="pop-links">
+        <a class="gm" href="${gmapsURL}" target="_blank" rel="noopener">📍 Google Maps</a>
+        <a class="ta" href="${taURL}"   target="_blank" rel="noopener">🦉 TripAdvisor</a>
+      </div>
+    </div>
+  `;
+}
+
+PLACES.forEach((p, idx)=>{
+  const m = L.marker([p.lat, p.lng], { icon: makeIcon(p.cat) })
+    .addTo(map)
+    .bindPopup(popupHTML(p), { maxWidth: 320, autoPan:true });
+  m._place = p;
+  m._idx = idx;
+  markers.push(m);
+});
+
+/* ---------------- FILTERS ---------------- */
+let activeCat = "all";
+let activeQuery = "";
+
+function applyFilters(){
+  let visibleCount = 0;
+  markers.forEach(m=>{
+    const p = m._place;
+    const catOk = (activeCat === "all") || (p.cat === activeCat);
+    const qOk   = !activeQuery || p.name.toLowerCase().includes(activeQuery);
+    if(catOk && qOk){
+      if(!map.hasLayer(m)) m.addTo(map);
+      visibleCount++;
+    }else{
+      if(map.hasLayer(m)) map.removeLayer(m);
+    }
+  });
+  document.getElementById('count').textContent = visibleCount;
+}
+
+document.querySelectorAll('.cat-btn').forEach(btn=>{
+  btn.addEventListener('click', ()=>{
+    document.querySelectorAll('.cat-btn').forEach(b=>b.classList.remove('active'));
+    btn.classList.add('active');
+    activeCat = btn.dataset.cat;
+    applyFilters();
+  });
+});
+
+/* ---------------- SEARCH with autocomplete ---------------- */
+const searchInput = document.getElementById('search');
+const suggBox     = document.getElementById('suggestions');
+let activeSuggestion = -1;
+
+function renderSuggestions(q){
+  const qLower = (q||"").trim().toLowerCase();
+
+  // Build the list of matches (or all places if no query)
+  const matches = PLACES
+    .map((p,i)=>({p,i}))
+    .filter(x => !qLower || x.p.name.toLowerCase().includes(qLower) || CAT_META[x.p.cat].label.toLowerCase().includes(qLower));
+
+  if(!matches.length){
+    suggBox.innerHTML = `<div class="sugg-empty">✨ No magical places match — try another word.</div>`;
+    suggBox.classList.add('show');
+    activeSuggestion = -1;
+    return;
+  }
+
+  // Group by category for nicer scanning (preserve category order)
+  const CAT_ORDER = ["kids","dining","coffee","attraction"];
+  const grouped = {};
+  matches.forEach(x => {
+    (grouped[x.p.cat] = grouped[x.p.cat] || []).push(x);
+  });
+
+  let html = "";
+  CAT_ORDER.forEach(cat=>{
+    if(!grouped[cat]) return;
+    const meta = CAT_META[cat];
+    html += `<div class="sugg-group">${meta.emoji} ${meta.label} <span style="opacity:.55;font-weight:600">(${grouped[cat].length})</span></div>`;
+    grouped[cat].forEach(x=>{
+      const m = CAT_META[x.p.cat];
+      const display = qLower ? highlightMatch(x.p.name, qLower) : x.p.name;
+      html += `<div class="suggestion" data-idx="${x.i}">
+        <span class="pin" style="background:${m.color}">${m.emoji}</span>
+        <span>${display}</span>
+        <span class="meta">${m.label}</span>
+      </div>`;
+    });
+  });
+
+  suggBox.innerHTML = html;
+  suggBox.classList.add('show');
+  activeSuggestion = -1;
+
+  suggBox.querySelectorAll('.suggestion').forEach(el=>{
+    el.addEventListener('click', ()=>{
+      const idx = parseInt(el.dataset.idx,10);
+      selectPlace(idx);
+    });
+  });
+}
+
+function highlightMatch(name, q){
+  const i = name.toLowerCase().indexOf(q);
+  if(i<0) return name;
+  return name.slice(0,i) + '<b style="color:var(--dlp-magenta)">' + name.slice(i, i+q.length) + '</b>' + name.slice(i+q.length);
+}
+
+function selectPlace(idx){
+  const p = PLACES[idx];
+  const m = markers[idx];
+  // ensure visible regardless of current filter
+  document.querySelectorAll('.cat-btn').forEach(b=>b.classList.toggle('active', b.dataset.cat==="all"));
+  activeCat = "all";
+  activeQuery = "";
+  searchInput.value = p.name;
+  applyFilters();
+  map.flyTo([p.lat, p.lng], 15, { duration: 1.1 });
+  setTimeout(()=> m.openPopup(), 900);
+  suggBox.classList.remove('show');
+}
+
+searchInput.addEventListener('input', e=>{
+  const v = e.target.value.trim();
+  activeQuery = v.toLowerCase();
+  renderSuggestions(v);
+  applyFilters();
+});
+
+// Show the full list as a dropdown whenever the user focuses/clicks the search box
+searchInput.addEventListener('focus', ()=>{
+  renderSuggestions(searchInput.value);
+});
+searchInput.addEventListener('click', ()=>{
+  renderSuggestions(searchInput.value);
+});
+
+searchInput.addEventListener('keydown', e=>{
+  const items = suggBox.querySelectorAll('.suggestion[data-idx]');
+  if(!items.length) return;
+  if(e.key === "ArrowDown"){
+    e.preventDefault();
+    activeSuggestion = (activeSuggestion+1) % items.length;
+    items.forEach(el=>el.classList.remove('active'));
+    items[activeSuggestion].classList.add('active');
+    items[activeSuggestion].scrollIntoView({block:'nearest'});
+  } else if(e.key === "ArrowUp"){
+    e.preventDefault();
+    activeSuggestion = (activeSuggestion-1+items.length) % items.length;
+    items.forEach(el=>el.classList.remove('active'));
+    items[activeSuggestion].classList.add('active');
+    items[activeSuggestion].scrollIntoView({block:'nearest'});
+  } else if(e.key === "Enter"){
+    e.preventDefault();
+    const target = activeSuggestion >= 0 ? items[activeSuggestion] : items[0];
+    if(target){
+      selectPlace(parseInt(target.dataset.idx,10));
+    }
+  } else if(e.key === "Escape"){
+    suggBox.classList.remove('show');
+    searchInput.blur();
+  }
+});
+
+document.addEventListener('click', e=>{
+  if(!e.target.closest('.search-wrap')) suggBox.classList.remove('show');
+});
+
+/* init count */
+applyFilters();
+
+/* ---------------- LIVE USER LOCATION ---------------- */
+const locateBtn = document.getElementById('locateBtn');
+const toastEl   = document.getElementById('toast');
+let userMarker = null;
+let accuracyCircle = null;
+let watchId = null;
+let firstLocation = true;
+let toastTimer = null;
+
+function showToast(msg, ms=3000){
+  toastEl.textContent = msg;
+  toastEl.classList.add('show');
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(()=> toastEl.classList.remove('show'), ms);
+}
+
+function userIcon(){
+  return L.divIcon({
+    html: '<div class="user-marker"></div>',
+    className: '',
+    iconSize: [22, 22],
+    iconAnchor: [11, 11]
+  });
+}
+
+function userPopupHTML(lat, lng, accuracy){
+  // Find nearest place by straight-line distance
+  let nearest = null, best = Infinity;
+  PLACES.forEach(p=>{
+    const d = haversine(lat, lng, p.lat, p.lng);
+    if(d < best){ best = d; nearest = p; }
+  });
+  const distStr = best < 1 ? Math.round(best*1000) + ' m' : best.toFixed(1) + ' km';
+  const accStr  = accuracy ? `±${Math.round(accuracy)} m` : '';
+  return `
+    <div class="pop-header" style="padding:10px 14px">
+      <span class="pop-cat">📍 You are here</span>
+      <h3 class="pop-title" style="font-size:15px">Your live location</h3>
+    </div>
+    <div class="pop-body" style="padding:12px 14px">
+      <p class="pop-desc" style="margin-bottom:6px">
+        <b>Lat:</b> ${lat.toFixed(5)} &nbsp; <b>Lng:</b> ${lng.toFixed(5)}<br/>
+        <span style="opacity:.75">Accuracy ${accStr}</span>
+      </p>
+      ${nearest ? `<div class="branches" style="margin-top:8px">
+        <strong>✨ Nearest place</strong>
+        <div style="font-size:13px; color:#333; margin-top:4px">
+          <b>${nearest.name}</b> — ${distStr} away
+        </div>
+      </div>` : ''}
+    </div>
+  `;
+}
+
+// Haversine distance in km
+function haversine(lat1, lon1, lat2, lon2){
+  const R = 6371;
+  const toRad = d => d * Math.PI / 180;
+  const dLat = toRad(lat2 - lat1);
+  const dLon = toRad(lon2 - lon1);
+  const a = Math.sin(dLat/2)**2 +
+            Math.cos(toRad(lat1)) * Math.cos(toRad(lat2)) *
+            Math.sin(dLon/2)**2;
+  return 2 * R * Math.asin(Math.sqrt(a));
+}
+
+function updateUserLocation(pos){
+  const { latitude, longitude, accuracy } = pos.coords;
+
+  if(!userMarker){
+    userMarker = L.marker([latitude, longitude], {
+      icon: userIcon(),
+      zIndexOffset: 1000
+    }).addTo(map);
+    userMarker.bindPopup(userPopupHTML(latitude, longitude, accuracy), { maxWidth: 280 });
+  } else {
+    userMarker.setLatLng([latitude, longitude]);
+    userMarker.setPopupContent(userPopupHTML(latitude, longitude, accuracy));
+  }
+
+  if(!accuracyCircle){
+    accuracyCircle = L.circle([latitude, longitude], {
+      radius: accuracy,
+      color: '#E6308A',
+      weight: 1,
+      opacity: .55,
+      fillColor: '#E6308A',
+      fillOpacity: .10,
+      interactive: false
+    }).addTo(map);
+  } else {
+    accuracyCircle.setLatLng([latitude, longitude]);
+    accuracyCircle.setRadius(accuracy);
+  }
+
+  if(firstLocation){
+    firstLocation = false;
+    map.flyTo([latitude, longitude], 15, { duration: 1.2 });
+    locateBtn.classList.remove('seeking');
+    locateBtn.classList.add('active');
+    showToast('✨ Found you! Tap the pin for your live location.');
+  }
+}
+
+function locationError(err){
+  locateBtn.classList.remove('seeking', 'active');
+  let msg = '⚠️ Could not get your location.';
+  if(err.code === 1) msg = '⛔ Location permission denied. Enable it in your browser settings.';
+  else if(err.code === 2) msg = '🛰️ Location unavailable — check your GPS / network.';
+  else if(err.code === 3) msg = '⏱️ Location request timed out — try again.';
+  showToast(msg, 4500);
+}
+
+function startLocating(){
+  if(!('geolocation' in navigator)){
+    showToast('⚠️ Geolocation is not supported by this browser.', 4000);
+    return;
+  }
+  locateBtn.classList.add('seeking');
+  showToast('🛰️ Locating you…', 2000);
+  firstLocation = true;
+
+  // watchPosition gives live updates as the user moves
+  watchId = navigator.geolocation.watchPosition(updateUserLocation, locationError, {
+    enableHighAccuracy: true,
+    maximumAge: 5000,
+    timeout: 15000
+  });
+}
+
+function stopLocating(){
+  if(watchId != null){
+    navigator.geolocation.clearWatch(watchId);
+    watchId = null;
+  }
+  if(userMarker){
+    map.removeLayer(userMarker);
+    userMarker = null;
+  }
+  if(accuracyCircle){
+    map.removeLayer(accuracyCircle);
+    accuracyCircle = null;
+  }
+  locateBtn.classList.remove('seeking', 'active');
+  showToast('Live location turned off.', 1800);
+}
+
+locateBtn.addEventListener('click', ()=>{
+  if(watchId == null){
+    // start
+    startLocating();
+  } else if(userMarker){
+    // already tracking — re-center on user (single tap)
+    const { lat, lng } = userMarker.getLatLng();
+    map.flyTo([lat, lng], Math.max(map.getZoom(), 15), { duration: .9 });
+  }
+});
+
+// Double-click / long-press to stop
+let pressTimer = null;
+locateBtn.addEventListener('pointerdown', ()=>{
+  pressTimer = setTimeout(()=>{
+    if(watchId != null) stopLocating();
+  }, 700);
+});
+locateBtn.addEventListener('pointerup',     ()=> clearTimeout(pressTimer));
+locateBtn.addEventListener('pointerleave',  ()=> clearTimeout(pressTimer));
+locateBtn.addEventListener('dblclick',      ()=>{ if(watchId != null) stopLocating(); });
+
+/* ---------------- RESPONSIVE: keep map sized to viewport minus header ---------------- */
+const headerEl = document.querySelector('header.app');
+function syncHeaderHeight(){
+  const h = headerEl.getBoundingClientRect().height;
+  document.documentElement.style.setProperty('--header-h', h + 'px');
+  // Leaflet needs to recalc tile positions after size changes
+  if (map) map.invalidateSize();
+}
+syncHeaderHeight();
+window.addEventListener('resize', syncHeaderHeight);
+window.addEventListener('orientationchange', ()=> setTimeout(syncHeaderHeight, 200));
+// Re-measure once fonts have loaded (Cinzel/Mr Dafoe shift the header height)
+if (document.fonts && document.fonts.ready){
+  document.fonts.ready.then(syncHeaderHeight);
+}
+// Watch the header for size changes (e.g. category bar wrapping)
+if (window.ResizeObserver){
+  new ResizeObserver(syncHeaderHeight).observe(headerEl);
+}
+</script>
+</body>
+</html>

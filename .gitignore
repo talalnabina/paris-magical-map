@@ -1,0 +1,16 @@
+# macOS
+.DS_Store
+
+# Editors
+.vscode/
+.idea/
+*.swp
+*~
+
+# Node (if you ever add tooling)
+node_modules/
+npm-debug.log*
+
+# Build / temp
+dist/
+.tmp/

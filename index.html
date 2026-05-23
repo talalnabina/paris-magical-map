@@ -201,9 +201,11 @@
     transition: all .2s ease;
     backdrop-filter: blur(4px);
   }
-  .cat-btn:hover{
-    background: rgba(255,255,255,.22);
-    transform: translateY(-1px);
+  @media (hover: hover){
+    .cat-btn:hover{
+      background: rgba(255,255,255,.22);
+      transform: translateY(-1px);
+    }
   }
   .cat-btn.active{
     background: linear-gradient(135deg, var(--dlp-gold-light) 0%, var(--dlp-gold) 100%);
@@ -301,6 +303,42 @@
   }
   .pop-desc{
     font-size:13px; line-height:1.45; color:#333; margin:0 0 10px;
+  }
+  .pop-rating{
+    display:flex; align-items:center; gap:8px;
+    padding: 7px 11px;
+    margin: 0 0 8px;
+    background: linear-gradient(90deg, rgba(212,175,111,.22), rgba(212,175,111,.05));
+    border: 1px solid rgba(212,175,111,.35);
+    border-radius:10px;
+    font-size:13px;
+  }
+  .pop-rating .stars{
+    font-weight:700;
+    color: var(--dlp-gold-deep);
+    display:inline-flex; align-items:center; gap:4px;
+  }
+  .pop-rating .stars svg{ width:14px; height:14px; }
+  .pop-rating .reviews{
+    font-size:11px;
+    color:#666;
+  }
+  .pop-rating .live-hint{
+    margin-left:auto;
+    font-size:10px;
+    opacity:.6;
+    font-style:italic;
+  }
+  .pop-address{
+    display:flex; align-items:flex-start; gap:6px;
+    font-size:12px; color:#555; line-height:1.4;
+    margin: 0 0 10px;
+    padding-left:2px;
+  }
+  .pop-address::before{
+    content:"📍";
+    font-size:12px;
+    flex-shrink:0;
   }
   .branches{
     background:white;
@@ -503,18 +541,22 @@
       overflow-x: auto;
       overflow-y: hidden;
       gap:6px;
-      padding: 4px 24px 4px 14px;  /* extra right padding so last button isn't hugged by edge */
+      padding: 4px 28px 4px 14px;   /* extra right padding so last button isn't flush against the edge */
       scrollbar-width: none;
       -ms-overflow-style: none;
       -webkit-overflow-scrolling: touch;
-      scroll-behavior: smooth;
-      /* NO scroll-snap — it was causing the jerky feel and hiding the last item */
+      touch-action: pan-x;          /* prioritise horizontal touch */
+      overscroll-behavior-x: contain; /* flicks don't bleed into page scroll */
+      /* NOTE: no scroll-snap and no scroll-behavior:smooth — both interfere with native momentum on iOS/Android */
     }
     .category-bar::-webkit-scrollbar{ display:none; }
     .cat-btn{
       flex: 0 0 auto;
       padding:8px 12px;
       font-size:12px;
+      transition: background .15s ease, box-shadow .15s ease, border-color .15s ease;
+      /* On touch devices, drop the translateY hover so taps don't "stick" with a lifted state */
+      transform: none !important;
     }
 
     /* Suggestions dropdown — taller, easier touch targets */
@@ -995,6 +1037,88 @@ const CAT_META = {
   attraction: { color:"#6B3FA0", emoji:"✨", label:"Attractions" }      // Maleficent purple
 };
 
+/* Approximate Google Maps ratings, review counts, and primary addresses.
+   These are snapshots — for the live numbers, tap the Google Maps link in the popup. */
+const PLACE_META = {
+  // -------- Hotel --------
+  "Fraser Suites Le Claridge Champs-Élysées": { rating:4.4, reviews:2500, address:"74 Av. des Champs-Élysées, 75008 Paris" },
+  "Disney's Newport Bay Club":                 { rating:4.3, reviews:15000, address:"Av. Robert Schuman, 77700 Chessy" },
+  // -------- Kids --------
+  "Parc Astérix":                              { rating:4.6, reviews:56000, address:"60128 Plailly" },
+  "Muséum National d'Histoire Naturelle":      { rating:4.5, reviews:22000, address:"57 Rue Cuvier, 75005 Paris" },
+  "Cirque d'Hiver Bouglione":                  { rating:4.5, reviews:6000,  address:"110 Rue Amelot, 75011 Paris" },
+  "Musée de l'Air et de l'Espace (Balloons & Aircraft)": { rating:4.5, reviews:18000, address:"Aéroport de Paris - Le Bourget, 93350 Le Bourget" },
+  "Aquamundo — Center Parcs Villages Nature":  { rating:4.0, reviews:2500,  address:"Allée des Cottages, 77700 Bailly-Romainvilliers" },
+  "Macaron Baking Class — Maison Fleuret":     { rating:4.7, reviews:150,   address:"Maison Fleuret, Paris" },
+  "Jellycat Patisserie — Le Bon Marché":       { rating:4.6, reviews:250,   address:"Le Bon Marché, 24 Rue de Sèvres, 75007 Paris" },
+  "Cité des Sciences et de l'Industrie":       { rating:4.4, reviews:50000, address:"30 Av. Corentin Cariou, 75019 Paris" },
+  "Disneyland Paris":                          { rating:4.6, reviews:89000, address:"Bd de Parc, 77700 Coupvray" },
+  // -------- Dining --------
+  "InterContinental Paris Le Grand":           { rating:4.6, reviews:7000,  address:"2 Rue Scribe, 75009 Paris" },
+  "Siena":                                     { rating:4.2, reviews:1500,  address:"19 Av. Matignon, 75008 Paris" },
+  "Shirvan Café Métisse":                      { rating:4.4, reviews:1600,  address:"5 Pl. de l'Alma, 75008 Paris" },
+  "Shabestan":                                 { rating:4.5, reviews:800,   address:"34 Rue Marbeuf, 75008 Paris" },
+  "Cuisine Persane (Mazeh)":                   { rating:4.5, reviews:600,   address:"65 Rue des Entrepreneurs, 75015 Paris" },
+  "L'Avenue":                                  { rating:4.3, reviews:4500,  address:"41 Av. Montaigne, 75008 Paris" },
+  "CoCo":                                      { rating:4.4, reviews:3000,  address:"1 Pl. Jacques Rouché, 75009 Paris" },
+  "Diep":                                      { rating:4.0, reviews:1500,  address:"55 Rue Pierre Charron, 75008 Paris" },
+  "Junk — Burger Bar":                         { rating:4.5, reviews:1200,  address:"21 Bd du Temple, 75003 Paris" },
+  "MUN":                                       { rating:4.3, reviews:1800,  address:"23 Av. de Wagram, 75017 Paris" },
+  "Candelaria":                                { rating:4.3, reviews:3500,  address:"52 Rue de Saintonge, 75003 Paris" },
+  "Noura (Lebanese)":                          { rating:4.3, reviews:4000,  address:"27 Av. Marceau, 75116 Paris" },
+  "Bambini":                                   { rating:4.3, reviews:1500,  address:"13 Av. du Président Wilson, 75116 Paris" },
+  "Gigi":                                      { rating:4.4, reviews:1700,  address:"5 Av. Matignon, 75008 Paris" },
+  "Pizzeria Popolare":                         { rating:4.4, reviews:13000, address:"111 Rue Réaumur, 75002 Paris" },
+  "Ferdi":                                     { rating:4.2, reviews:1400,  address:"32 Rue du Mont Thabor, 75001 Paris" },
+  // -------- Breakfast & Coffee --------
+  "Ladurée":                                   { rating:4.3, reviews:8200,  address:"75 Av. des Champs-Élysées, 75008 Paris" },
+  "Carette":                                   { rating:4.3, reviews:7500,  address:"4 Pl. du Trocadéro et du 11 Novembre, 75016 Paris" },
+  "Kozy Bosquet":                              { rating:4.4, reviews:600,   address:"23 Av. Bosquet, 75007 Paris" },
+  "Ritz Paris — Salon Proust":                 { rating:4.6, reviews:5000,  address:"15 Pl. Vendôme, 75001 Paris" },
+  "Maurice Sfez Café (Waffles)":               { rating:4.5, reviews:400,   address:"7 Rue Bachaumont, 75002 Paris" },
+  "Cult Café":                                 { rating:4.5, reviews:700,   address:"15 Rue Notre Dame de Lorette, 75009 Paris" },
+  "Chapon Chocolatier — Rue du Bac":           { rating:4.6, reviews:700,   address:"69 Rue du Bac, 75007 Paris" },
+  "La Maison d'Isabelle (Best Croissant)":     { rating:4.5, reviews:3000,  address:"47 Bd Saint-Germain, 75005 Paris" },
+  "Cortado":                                   { rating:4.5, reviews:600,   address:"4 Rue Bachaumont, 75002 Paris" },
+  "Maison Méert":                              { rating:4.5, reviews:700,   address:"16 Rue Elzévir, 75003 Paris" },
+  "Café de Flore":                             { rating:4.2, reviews:14000, address:"172 Bd Saint-Germain, 75006 Paris" },
+  "Mamiche":                                   { rating:4.5, reviews:1500,  address:"45 Rue Condorcet, 75009 Paris" },
+  "Plaq (Hot Chocolate)":                      { rating:4.7, reviews:1700,  address:"4 Rue du Nil, 75002 Paris" },
+  "Angelina":                                  { rating:4.3, reviews:9000,  address:"226 Rue de Rivoli, 75001 Paris" },
+  "Café du Carrousel (Louvre)":                { rating:4.0, reviews:500,   address:"Carrousel du Louvre, 99 Rue de Rivoli, 75001 Paris" },
+  "Café Saint-Laurent":                        { rating:4.4, reviews:300,   address:"5 Av. Marceau, 75116 Paris" },
+  "Café Kitsuné":                              { rating:4.4, reviews:5000,  address:"51 Galerie de Montpensier, 75001 Paris" },
+  "Le Café Marly":                             { rating:4.2, reviews:7500,  address:"93 Rue de Rivoli, 75001 Paris" },
+  "1er Prix 2018 — Le Grenier à Pain":         { rating:4.5, reviews:2000,  address:"38 Rue des Abbesses, 75018 Paris" },
+  "Saint Pearl":                               { rating:4.4, reviews:1200,  address:"38 Rue des Boulangers, 75005 Paris" },
+  "Immersion Café":                            { rating:4.5, reviews:700,   address:"4 bis Rue de Lancry, 75010 Paris" },
+  "Season":                                    { rating:4.3, reviews:1500,  address:"1 Rue Dupuis, 75003 Paris" },
+  "Bo&Mie / Bon Jo Boulangerie":               { rating:4.6, reviews:5000,  address:"18 Rue de Turbigo, 75002 Paris" },
+  "Kith Treats Paris":                         { rating:4.5, reviews:1500,  address:"35 Rue de Sèvres, 75006 Paris" },
+  "Bacha Coffee":                              { rating:4.6, reviews:3500,  address:"Galeries Lafayette Champs-Élysées, 60 Av. des Champs-Élysées, 75008 Paris" },
+  "Noir Coffee":                               { rating:4.5, reviews:600,   address:"35 Rue Coquillière, 75001 Paris" },
+  "Ralph's at Ralph Lauren":                   { rating:4.4, reviews:2500,  address:"173 Bd Saint-Germain, 75006 Paris" },
+  "Maison Gosselin":                           { rating:4.5, reviews:1000,  address:"125 Rue Saint-Honoré, 75001 Paris" },
+  "Pierre Hermé":                              { rating:4.5, reviews:3500,  address:"72 Rue Bonaparte, 75006 Paris" },
+  "Café L'Occitane":                           { rating:4.3, reviews:400,   address:"86 Av. des Champs-Élysées, 75008 Paris" },
+  "Moka Café":                                 { rating:4.6, reviews:500,   address:"35 Rue des Martyrs, 75009 Paris" },
+  // -------- Attractions --------
+  "Seine River Cruise — Bateaux Mouches":      { rating:4.3, reviews:65000, address:"Port de la Conférence, 75008 Paris" },
+  "Place Vendôme → Louvre Walk":               { rating:4.7, reviews:42000, address:"Pl. Vendôme, 75001 Paris" },
+  "Scavenger Hunt at the Louvre":              { rating:4.7, reviews:1500,  address:"Musée du Louvre, 75001 Paris" },
+  "Musée d'Orsay":                             { rating:4.7, reviews:180000, address:"Esplanade Valéry Giscard d'Estaing, 75007 Paris" },
+  "Officine Universelle Buly 1803":            { rating:4.7, reviews:600,   address:"6 Rue Bonaparte, 75006 Paris" },
+  "Montmartre (Art District)":                 { rating:4.7, reviews:200000, address:"Pl. du Tertre, 75018 Paris" },
+  "Le Bon Marché":                             { rating:4.5, reviews:28000, address:"24 Rue de Sèvres, 75007 Paris" },
+  "Saint-Germain-des-Prés":                    { rating:4.7, reviews:35000, address:"3 Pl. Saint-Germain des Prés, 75006 Paris" },
+  "Trocadéro (Eiffel Tower View Cafés)":       { rating:4.7, reviews:290000, address:"Pl. du Trocadéro, 75016 Paris" },
+  "Opéra Garnier":                             { rating:4.7, reviews:50000, address:"Pl. de l'Opéra, 75009 Paris" },
+  "Galeries Lafayette Haussmann":              { rating:4.5, reviews:110000, address:"40 Bd Haussmann, 75009 Paris" },
+  "Notre-Dame & Châtelet":                     { rating:4.7, reviews:290000, address:"6 Parvis Notre-Dame - Pl. Jean-Paul II, 75004 Paris" },
+  "Passage Jouffroy":                          { rating:4.5, reviews:4500,  address:"10-12 Bd Montmartre, 75009 Paris" },
+  "La Vallée Village":                         { rating:4.4, reviews:53000, address:"3 Cours de la Garonne, 77700 Serris" }
+};
+
 /* ---------------- MAP ---------------- */
 const map = L.map('map', { zoomControl:true, scrollWheelZoom:true }).setView([48.8606, 2.3376], 13);
 
@@ -1011,17 +1135,41 @@ function makeIcon(cat){
   return L.divIcon({ html, className:'', iconSize:[34,34], iconAnchor:[17,34], popupAnchor:[0,-32] });
 }
 
+function formatReviews(n){
+  if(!n && n !== 0) return '';
+  if(n >= 1000) return (n/1000).toFixed(n >= 10000 ? 0 : 1).replace(/\.0$/, '') + 'k';
+  return String(n);
+}
+
 function popupHTML(p){
   const meta = CAT_META[p.cat];
+  const details = PLACE_META[p.name] || {};
   const q = encodeURIComponent(p.gmaps || (p.name + ' Paris'));
   const t = encodeURIComponent(p.ta   || (p.name + ' Paris'));
   const gmapsURL = `https://www.google.com/maps/search/?api=1&query=${q}`;
   const taURL    = `https://www.tripadvisor.com/Search?q=${t}`;
-  const branchesHTML = (p.branches && p.branches.length) ? `
+
+  // Rating row — only if we have rating data
+  const ratingHTML = (details.rating != null) ? `
+    <div class="pop-rating">
+      <span class="stars">★ ${details.rating.toFixed(1)}</span>
+      ${details.reviews != null ? `<span class="reviews">(${formatReviews(details.reviews)} reviews)</span>` : ''}
+      <span class="live-hint">approx · tap link for live</span>
+    </div>` : '';
+
+  // Address — prefer explicit, otherwise first branch
+  const fallbackAddress = (p.branches && p.branches.length === 1) ? p.branches[0] : null;
+  const addressText = details.address || fallbackAddress;
+  // Hide the address line for places that are areas/walks (no real street address)
+  const addressHTML = addressText ? `<div class="pop-address"><span>${addressText}</span></div>` : '';
+
+  // Branches block — only when there are multiple locations
+  const branchesHTML = (p.branches && p.branches.length > 1) ? `
     <div class="branches">
       <strong>📍 Locations (${p.branches.length})</strong>
       <ul>${p.branches.map(b=>`<li>${b}</li>`).join('')}</ul>
     </div>` : '';
+
   return `
     <div class="pop-header">
       <span class="pop-cat">${meta.emoji} ${meta.label}</span>
@@ -1029,6 +1177,8 @@ function popupHTML(p){
     </div>
     <div class="pop-body">
       <p class="pop-desc">${p.desc}</p>
+      ${ratingHTML}
+      ${addressHTML}
       ${branchesHTML}
       <div class="pop-links">
         <a class="gm" href="${gmapsURL}" target="_blank" rel="noopener">📍 Google Maps</a>

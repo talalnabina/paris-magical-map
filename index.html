@@ -598,6 +598,7 @@
 
     <div class="category-bar" id="categoryBar">
       <button class="cat-btn active" data-cat="all"><span class="dot" style="background:#fff"></span>All Places</button>
+      <button class="cat-btn" data-cat="hotel"><span class="dot" style="background:#3F88A8"></span>Hotel</button>
       <button class="cat-btn" data-cat="kids"><span class="dot" style="background:#7BD3F7"></span>Kids</button>
       <button class="cat-btn" data-cat="dining"><span class="dot" style="background:#E6308A"></span>Lunch &amp; Dinner</button>
       <button class="cat-btn" data-cat="coffee"><span class="dot" style="background:#C58A4B"></span>Breakfast &amp; Coffee</button>
@@ -621,6 +622,21 @@
 */
 
 const PLACES = [
+  /* ===================== HOTEL (your stays) ===================== */
+  { name:"Fraser Suites Le Claridge Champs-Élysées", cat:"hotel", lat:48.8709, lng:2.3070,
+    desc:"Your Paris home — 5-star serviced suites on the Champs-Élysées, steps from L'Avenue, Ladurée, Bacha and the Arc de Triomphe.",
+    branches:[
+      "74 Av. des Champs-Élysées, 75008 Paris"
+    ],
+    gmaps:"Fraser Suites Le Claridge Champs Elysees Paris", ta:"Fraser Suites Le Claridge Champs Elysees" },
+
+  { name:"Disney's Newport Bay Club", cat:"hotel", lat:48.8676, lng:2.7733,
+    desc:"Your Disneyland home — Disney's New England-style 4-star yacht-club hotel on Lake Disney, a 15-minute lakeside stroll from the park gates.",
+    branches:[
+      "Av. Robert Schuman, 77700 Chessy (Disneyland Paris)"
+    ],
+    gmaps:"Disney's Newport Bay Club Disneyland Paris", ta:"Disney's Newport Bay Club" },
+
   /* ===================== KIDS ===================== */
   { name:"Parc Astérix", cat:"kids", lat:49.1361, lng:2.5719,
     desc:"A Gallic-themed amusement park north of Paris with roller coasters, shows and family rides — perfect day-trip alternative to Disneyland.",
@@ -948,10 +964,11 @@ const PLACES = [
 
 /* category colours / icons */
 const CAT_META = {
+  hotel:      { color:"#3F88A8", emoji:"🛏️", label:"Hotel" },          // deep teal — your stays
   kids:       { color:"#7BD3F7", emoji:"🎠", label:"Kids" },
   dining:     { color:"#E6308A", emoji:"🍽️", label:"Lunch & Dinner" },
   coffee:     { color:"#C58A4B", emoji:"☕", label:"Breakfast & Coffee" },
-  attraction: { color:"#6B3FA0", emoji:"✨", label:"Attractions" }   // Maleficent purple
+  attraction: { color:"#6B3FA0", emoji:"✨", label:"Attractions" }      // Maleficent purple
 };
 
 /* ---------------- MAP ---------------- */
@@ -1056,7 +1073,7 @@ function renderSuggestions(q){
   }
 
   // Group by category for nicer scanning (preserve category order)
-  const CAT_ORDER = ["kids","dining","coffee","attraction"];
+  const CAT_ORDER = ["hotel","kids","dining","coffee","attraction"];
   const grouped = {};
   matches.forEach(x => {
     (grouped[x.p.cat] = grouped[x.p.cat] || []).push(x);

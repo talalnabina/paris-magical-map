@@ -480,24 +480,39 @@
       padding:12px 14px 12px 38px;
       font-size:15px;          /* >=16px prevents iOS zoom-on-focus; 15 still mostly ok */
     }
-    /* Category bar: horizontal scroll instead of wrapping to multiple lines */
+    /* Category bar wrapper: horizontal scroll with a fade hint on the right edge */
+    .category-bar-wrap{
+      position: relative;
+      margin: 0 -14px;        /* extend to header edges */
+    }
+    .category-bar-wrap::after{
+      /* fade hint signalling more content to the right */
+      content:"";
+      position:absolute;
+      top:0; right:0; bottom:0;
+      width:28px;
+      pointer-events:none;
+      background: linear-gradient(to right,
+        rgba(61,31,102,0) 0%,
+        rgba(61,31,102,.55) 100%);
+      opacity: var(--fade-right, 1);
+      transition: opacity .2s ease;
+    }
     .category-bar{
       flex-wrap: nowrap;
       overflow-x: auto;
+      overflow-y: hidden;
       gap:6px;
-      padding-bottom:2px;
-      margin: 0 -14px;            /* extend to header edges */
-      padding-left:14px;
-      padding-right:14px;
-      scrollbar-width: none;       /* Firefox */
-      -ms-overflow-style: none;    /* IE/Edge */
-      scroll-snap-type: x mandatory;
+      padding: 4px 24px 4px 14px;  /* extra right padding so last button isn't hugged by edge */
+      scrollbar-width: none;
+      -ms-overflow-style: none;
       -webkit-overflow-scrolling: touch;
+      scroll-behavior: smooth;
+      /* NO scroll-snap — it was causing the jerky feel and hiding the last item */
     }
     .category-bar::-webkit-scrollbar{ display:none; }
     .cat-btn{
       flex: 0 0 auto;
-      scroll-snap-align: start;
       padding:8px 12px;
       font-size:12px;
     }
@@ -596,13 +611,15 @@
       <div id="suggestions" class="suggestions" role="listbox"></div>
     </div>
 
-    <div class="category-bar" id="categoryBar">
-      <button class="cat-btn active" data-cat="all"><span class="dot" style="background:#fff"></span>All Places</button>
-      <button class="cat-btn" data-cat="hotel"><span class="dot" style="background:#3F88A8"></span>Hotel</button>
-      <button class="cat-btn" data-cat="kids"><span class="dot" style="background:#7BD3F7"></span>Kids</button>
-      <button class="cat-btn" data-cat="dining"><span class="dot" style="background:#E6308A"></span>Lunch &amp; Dinner</button>
-      <button class="cat-btn" data-cat="coffee"><span class="dot" style="background:#C58A4B"></span>Breakfast &amp; Coffee</button>
-      <button class="cat-btn" data-cat="attraction"><span class="dot" style="background:#6B3FA0"></span>Attractions</button>
+    <div class="category-bar-wrap">
+      <div class="category-bar" id="categoryBar">
+        <button class="cat-btn active" data-cat="all"><span class="dot" style="background:#fff"></span>All Places</button>
+        <button class="cat-btn" data-cat="hotel"><span class="dot" style="background:#3F88A8"></span>Hotel</button>
+        <button class="cat-btn" data-cat="kids"><span class="dot" style="background:#7BD3F7"></span>Kids</button>
+        <button class="cat-btn" data-cat="dining"><span class="dot" style="background:#E6308A"></span>Lunch &amp; Dinner</button>
+        <button class="cat-btn" data-cat="coffee"><span class="dot" style="background:#C58A4B"></span>Breakfast &amp; Coffee</button>
+        <button class="cat-btn" data-cat="attraction"><span class="dot" style="background:#6B3FA0"></span>Attractions</button>
+      </div>
     </div>
   </div>
 </header>
@@ -1051,6 +1068,28 @@ document.querySelectorAll('.cat-btn').forEach(btn=>{
     applyFilters();
   });
 });
+
+/* Hide the right-edge fade hint when the user has scrolled the category bar to the end */
+(function setupCategoryFadeHint(){
+  const bar = document.getElementById('categoryBar');
+  const wrap = bar && bar.parentElement;
+  if(!bar || !wrap) return;
+  function update(){
+    const maxScroll = bar.scrollWidth - bar.clientWidth;
+    if(maxScroll <= 2){
+      // No overflow at all — hide hint entirely (desktop / wide screens)
+      wrap.style.setProperty('--fade-right', '0');
+      return;
+    }
+    const remaining = maxScroll - bar.scrollLeft;
+    // Fade out as we approach the end (last ~24 px)
+    const opacity = Math.max(0, Math.min(1, remaining / 24));
+    wrap.style.setProperty('--fade-right', String(opacity));
+  }
+  bar.addEventListener('scroll', update, { passive:true });
+  window.addEventListener('resize', update);
+  update();
+})();
 
 /* ---------------- SEARCH with autocomplete ---------------- */
 const searchInput = document.getElementById('search');

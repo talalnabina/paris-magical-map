@@ -602,7 +602,7 @@
     <div class="castle">🏰</div>
     <h1><span class="magic">Magical</span>Paris Guide</h1>
   </div>
-  <div class="subtitle">✨ Click any pin to discover the magic — restaurants, cafés, attractions & kid-friendly spots ✨</div>
+  <div class="subtitle">✨ Tap categories to filter (pick more than one!) · click any pin for details ✨</div>
 
   <div class="controls">
     <div class="search-wrap">
@@ -1040,15 +1040,16 @@ PLACES.forEach((p, idx)=>{
   markers.push(m);
 });
 
-/* ---------------- FILTERS ---------------- */
-let activeCat = "all";
-let activeQuery = "";
+/* ---------------- FILTERS (multi-select) ---------------- */
+// Empty set = show all. Otherwise = union of the selected categories.
+const activeCats = new Set();
+let activeQuery  = "";
 
 function applyFilters(){
   let visibleCount = 0;
   markers.forEach(m=>{
     const p = m._place;
-    const catOk = (activeCat === "all") || (p.cat === activeCat);
+    const catOk = activeCats.size === 0 || activeCats.has(p.cat);
     const qOk   = !activeQuery || p.name.toLowerCase().includes(activeQuery);
     if(catOk && qOk){
       if(!map.hasLayer(m)) m.addTo(map);
@@ -1060,11 +1061,27 @@ function applyFilters(){
   document.getElementById('count').textContent = visibleCount;
 }
 
+function syncCategoryButtons(){
+  document.querySelectorAll('.cat-btn').forEach(b=>{
+    const c = b.dataset.cat;
+    const on = (c === "all") ? activeCats.size === 0 : activeCats.has(c);
+    b.classList.toggle('active', on);
+    b.setAttribute('aria-pressed', on ? 'true' : 'false');
+  });
+}
+
 document.querySelectorAll('.cat-btn').forEach(btn=>{
   btn.addEventListener('click', ()=>{
-    document.querySelectorAll('.cat-btn').forEach(b=>b.classList.remove('active'));
-    btn.classList.add('active');
-    activeCat = btn.dataset.cat;
+    const cat = btn.dataset.cat;
+    if(cat === "all"){
+      // "All Places" clears every selection
+      activeCats.clear();
+    } else {
+      // Toggle this category on or off
+      if(activeCats.has(cat)) activeCats.delete(cat);
+      else                    activeCats.add(cat);
+    }
+    syncCategoryButtons();
     applyFilters();
   });
 });
@@ -1155,10 +1172,10 @@ function highlightMatch(name, q){
 function selectPlace(idx){
   const p = PLACES[idx];
   const m = markers[idx];
-  // ensure visible regardless of current filter
-  document.querySelectorAll('.cat-btn').forEach(b=>b.classList.toggle('active', b.dataset.cat==="all"));
-  activeCat = "all";
+  // Ensure the chosen place is visible regardless of current filters
+  activeCats.clear();
   activeQuery = "";
+  syncCategoryButtons();
   searchInput.value = p.name;
   applyFilters();
   map.flyTo([p.lat, p.lng], 15, { duration: 1.1 });

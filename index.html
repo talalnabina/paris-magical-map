@@ -353,19 +353,38 @@
   }
   .branches ul{margin:0; padding-left:18px; font-size:12px; color:#444}
   .branches li{ margin:2px 0 }
+  .pop-trip{
+    display:flex; flex-wrap:wrap; gap:8px;
+    align-items:center;
+    margin: 0 0 10px;
+    padding: 8px 11px;
+    border-radius:10px;
+    background: linear-gradient(90deg, rgba(63,136,168,.18), rgba(155,111,203,.10));
+    border: 1px solid rgba(63,136,168,.30);
+    font-size:12.5px; color:#333;
+    line-height:1.3;
+  }
+  .pop-trip .trip-dist{ font-weight:700; color: var(--dlp-purple-deep); }
+  .pop-trip .trip-walk, .pop-trip .trip-drive{ opacity:.85; }
+  .pop-trip .trip-hint{ font-size:11.5px; color:#666; font-style:italic; }
+
   .pop-links{
-    display:flex; gap:8px; flex-wrap:wrap;
+    display:flex; gap:6px; flex-wrap:wrap;
   }
   .pop-links a{
-    flex:1;
+    flex:1 1 calc(33% - 6px);
     text-align:center;
     text-decoration:none;
-    font-size:12px; font-weight:700;
-    padding:8px 10px;
+    font-size:11.5px; font-weight:700;
+    padding:8px 6px;
     border-radius:20px;
     transition: transform .15s ease, box-shadow .15s ease;
     white-space:nowrap;
-    min-width:120px;
+    min-width:0;
+  }
+  .pop-links a.dir{
+    background: linear-gradient(135deg, #3F88A8, #2C6177);
+    color:white;
   }
   .pop-links a.gm{
     background: linear-gradient(135deg, var(--dlp-magenta), #c41e76);
@@ -378,6 +397,9 @@
   .pop-links a:hover{
     transform: translateY(-2px);
     box-shadow: 0 6px 14px rgba(0,0,0,.18);
+  }
+  @media (max-width: 680px){
+    .pop-links a{ font-size:11px; padding:9px 4px; }
   }
 
   /* ---------- LOCATE-ME FLOATING BUTTON ---------- */
@@ -1141,6 +1163,57 @@ function formatReviews(n){
   return String(n);
 }
 
+// Live user location captured by updateUserLocation — used for directions and travel-time estimates.
+let lastUserLatLng = null;
+
+function formatDuration(min){
+  if (min < 1) return '<1 min';
+  if (min < 60) return Math.round(min) + ' min';
+  const h = Math.floor(min/60), m = Math.round(min % 60);
+  return m ? `${h} h ${m} min` : `${h} h`;
+}
+
+function formatKm(km){
+  return km < 1 ? Math.round(km*1000) + ' m' : km.toFixed(1) + ' km';
+}
+
+// Rough multi-modal estimates from straight-line km.
+// Walking ~5 km/h with ~1.3x detour factor → ~3.85 km/h effective.
+// Driving in/around Paris: urban average ~21 km/h after traffic; for very long trips (>15 km) assume
+// some highway (~50 km/h) for the portion above 15 km — keeps Disneyland-from-Paris realistic.
+function tripEstimate(fromLat, fromLng, toLat, toLng){
+  const km = haversine(fromLat, fromLng, toLat, toLng);
+  const walkMin = (km / 3.85) * 60;
+  let driveMin;
+  if (km <= 15) {
+    driveMin = (km / 21) * 60;
+  } else {
+    driveMin = (15 / 21) * 60 + ((km - 15) / 50) * 60;
+  }
+  return { km, walkMin, driveMin };
+}
+
+function directionsURL(p){
+  const dest = `${p.lat},${p.lng}`;
+  const params = new URLSearchParams({ api: '1', destination: dest });
+  if (lastUserLatLng) params.set('origin', `${lastUserLatLng.lat},${lastUserLatLng.lng}`);
+  return `https://www.google.com/maps/dir/?${params.toString()}`;
+}
+
+function tripBlockHTML(p){
+  if (!lastUserLatLng){
+    return `<div class="pop-trip" data-placeholder="1">
+      <span class="trip-hint">📍 Tap the bottom-right pin to share your location for travel time</span>
+    </div>`;
+  }
+  const { km, walkMin, driveMin } = tripEstimate(lastUserLatLng.lat, lastUserLatLng.lng, p.lat, p.lng);
+  return `<div class="pop-trip">
+    <span class="trip-dist">📍 ${formatKm(km)}</span>
+    <span class="trip-walk">🚶 ~${formatDuration(walkMin)}</span>
+    <span class="trip-drive">🚗 ~${formatDuration(driveMin)}</span>
+  </div>`;
+}
+
 function popupHTML(p){
   const meta = CAT_META[p.cat];
   const details = PLACE_META[p.name] || {};
@@ -1148,6 +1221,7 @@ function popupHTML(p){
   const t = encodeURIComponent(p.ta   || (p.name + ' Paris'));
   const gmapsURL = `https://www.google.com/maps/search/?api=1&query=${q}`;
   const taURL    = `https://www.tripadvisor.com/Search?q=${t}`;
+  const dirURL   = directionsURL(p);
 
   // Rating row — only if we have rating data
   const ratingHTML = (details.rating != null) ? `
@@ -1180,9 +1254,11 @@ function popupHTML(p){
       ${ratingHTML}
       ${addressHTML}
       ${branchesHTML}
+      ${tripBlockHTML(p)}
       <div class="pop-links">
-        <a class="gm" href="${gmapsURL}" target="_blank" rel="noopener">📍 Google Maps</a>
-        <a class="ta" href="${taURL}"   target="_blank" rel="noopener">🦉 TripAdvisor</a>
+        <a class="dir" href="${dirURL}"   target="_blank" rel="noopener">🧭 Directions</a>
+        <a class="gm"  href="${gmapsURL}" target="_blank" rel="noopener">📍 Maps</a>
+        <a class="ta"  href="${taURL}"    target="_blank" rel="noopener">🦉 TripAdvisor</a>
       </div>
     </div>
   `;
@@ -1194,6 +1270,9 @@ PLACES.forEach((p, idx)=>{
     .bindPopup(popupHTML(p), { maxWidth: 320, autoPan:true });
   m._place = p;
   m._idx = idx;
+  // Re-render popup content right before it opens, so distance/time/directions
+  // always reflect the latest user location.
+  m.on('popupopen', () => m.setPopupContent(popupHTML(m._place)));
   markers.push(m);
 });
 
@@ -1457,6 +1536,11 @@ function haversine(lat1, lon1, lat2, lon2){
 
 function updateUserLocation(pos){
   const { latitude, longitude, accuracy } = pos.coords;
+  lastUserLatLng = { lat: latitude, lng: longitude };
+  // Refresh the open popup (if any) so distance/time/directions reflect the new location.
+  markers.forEach(m => {
+    if (m.isPopupOpen && m.isPopupOpen()) m.setPopupContent(popupHTML(m._place));
+  });
 
   if(!userMarker){
     userMarker = L.marker([latitude, longitude], {
